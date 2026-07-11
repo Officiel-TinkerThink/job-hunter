@@ -43,10 +43,18 @@ export default function App() {
     setDiscovering(false);
   }
 
+  // Header For You / All must also return to the board (not just change filter),
+  // otherwise clicking them from Profile/Detail leaves you stranded on that view.
+  function goFilter(f: "foryou" | "all") {
+    setFilter(f);
+    setSelected(null);
+    setView("board");
+  }
+
   if (view === "detail" && selected) {
     return (
       <div>
-        <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={setFilter} onProfile={() => { setView("profile"); setSelected(null); }} />
+        <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={goFilter} onProfile={() => { setView("profile"); setSelected(null); }} />
         <div className="p-6">
           <OpportunityDetail
             opp={selected}
@@ -61,7 +69,7 @@ export default function App() {
   if (view === "profile") {
     return (
       <div>
-        <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={setFilter} onProfile={() => setView("profile")} />
+        <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={goFilter} onProfile={() => setView("profile")} />
         <main className="max-w-5xl mx-auto px-6 py-8">
           <ProfileView onSaved={load} />
         </main>
@@ -71,7 +79,7 @@ export default function App() {
 
   return (
     <div className="min-h-full">
-      <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={setFilter} onProfile={() => setView("profile")} />
+      <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={goFilter} onProfile={() => setView("profile")} />
       <Hero />
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-5">
