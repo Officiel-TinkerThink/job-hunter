@@ -114,6 +114,8 @@ Upwork-first (clear "bid" action to build toward); Fiverr second (profile/SEO + 
   Profile view/edit, working header nav (For You / All / Profile) + Agent scan.
 - **Score transparency:** every card shows match % + the *reasons* (skill match, budget floor,
   seniority, avoid-niche hits). Rejects (below-floor / avoid-niche) shown on All tab.
+- **Apply via email (P2):** `SubmitApplication` cell + `SmtpMailer` adapter (dry-run safe) +
+  `POST /api/opportunities/{id}/apply` + "📧 Apply via email" button. Emits `applied`; ToS-clean.
 - **Discovery default = SeedSource** (realistic Upwork-style gigs) since Upwork RSS was
   discontinued (HTTP 410). HackerNewsSource = live public feed. UpworkApiSource = stub for
   when official API access is granted.

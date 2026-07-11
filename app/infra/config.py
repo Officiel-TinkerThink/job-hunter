@@ -12,3 +12,12 @@ DB_PATH = os.environ.get("JOBHUNTER_DB", str(DATA_DIR / "jobhunter.db"))
 # clickable demo, with HackerNews as a live public feed. Swap to an official
 # Upwork API adapter once access is available.
 JOB_SOURCE = os.environ.get("JOB_SOURCE", "seed")
+
+# Email-apply (SMTP). When any of these are missing the mailer runs in dry-run
+# (logs intent, sends nothing) so the app is safe to run without credentials.
+SMTP_HOST = os.environ.get("SMTP_HOST")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
+SMTP_FROM = os.environ.get("SMTP_FROM")
+APPLY_TO = os.environ.get("APPLY_TO")  # where applications are sent

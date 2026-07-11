@@ -40,6 +40,14 @@ On approval the agent drafts a proposal; the opportunity's progress is an event 
 - Every opportunity carries a `MatchScore` with `value` + `reasons[]` (skill match, budget
   floor, seniority, remote, avoid-niche hits, verdict). Reasons are persisted and shown on cards.
 
+### 7. Apply via email (P2 — ToS-clean)
+- On an approved (`draft_ready`) opportunity, the detail view shows **📧 Apply via email**.
+- The agent composes the email (subject + body from the drafted proposal + your profile) and
+  sends it via the `SmtpMailer` adapter (SMTP). Emits `applied`; opportunity → `APPLIED`.
+- **Dry-run safe:** with no SMTP credentials configured, it composes + records the intent but
+  sends nothing (UI shows the dry-run notice). Add `SMTP_*` env to send for real.
+- Upwork web-form submit stays behind official API access (see ROADMAP) — never log in to scrape.
+
 ## Architecture (lego layering)
 ```
 domain/      PURE: models, ports, events, services/ (atoms + cells)
@@ -62,6 +70,7 @@ infra/       config (source selection, DB path)
 | POST | `/api/opportunities/{id}/approve` | approve → draft proposal (state `draft_ready`) |
 | POST | `/api/opportunities/{id}/pass` | archive (state `archived`) |
 | POST | `/api/opportunities/{id}/preview-proposal` | draft proposal without state change (preview/copy) |
+| POST | `/api/opportunities/{id}/apply` | apply via email (state `applied`; dry-run safe) |
 
 ## Run it
 ```bash

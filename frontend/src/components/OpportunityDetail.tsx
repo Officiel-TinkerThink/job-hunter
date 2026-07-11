@@ -16,6 +16,11 @@ export function OpportunityDetail({
   const [preview, setPreview] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [applyResult, setApplyResult] = useState<{ dry_run: boolean; to: string | null } | null>(null);
+
+  useEffect(() => {
+    setApplyResult(null);
+  }, [opp.id]);
 
   useEffect(() => {
     api.timeline(opp.id).then(setTimeline);
@@ -29,6 +34,17 @@ export function OpportunityDetail({
     setBusy(false);
     onChanged();
     onBack();
+  }
+
+  async function doApply() {
+    setBusy(true);
+    try {
+      const r = await api.apply(opp.id);
+      setApplyResult({ dry_run: r.dry_run, to: r.to });
+    } finally {
+      setBusy(false);
+      onChanged();
+    }
   }
 
   async function copy() {
@@ -90,7 +106,23 @@ export function OpportunityDetail({
           >
             {copied ? "✓ Copied" : "⧉ Copy pitch"}
           </button>
+          {(opp.state === "draft_ready" || opp.state === "applied") && (
+            <button
+              disabled={busy || opp.state === "applied"}
+              onClick={doApply}
+              className="bg-accent text-ink font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
+            >
+              {opp.state === "applied" ? "✓ Applied" : "📧 Apply via email"}
+            </button>
+          )}
         </div>
+        {applyResult && (
+          <p className="text-xs mt-2 text-muted">
+            {applyResult.dry_run
+              ? "Dry-run: email composed but not sent (set SMTP_* env to send for real)."
+              : `Sent via email to ${applyResult.to}.`}
+          </p>
+        )}
       </div>
 
       {preview && (

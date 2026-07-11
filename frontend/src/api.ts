@@ -75,6 +75,10 @@ const api = {
   async approve(id: number): Promise<void> {
     await fetch(`/api/opportunities/${id}/approve`, { method: "POST" });
   },
+  async apply(id: number): Promise<{ ok: boolean; dry_run: boolean; to: string | null; subject: string }> {
+    const r = await fetch(`/api/opportunities/${id}/apply`, { method: "POST" });
+    return r.json();
+  },
   async pass(id: number): Promise<void> {
     await fetch(`/api/opportunities/${id}/pass`, { method: "POST" });
   },

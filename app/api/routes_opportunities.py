@@ -14,11 +14,13 @@ from ..adapters.sqlite_repo import SQLiteOpportunityRepo, SQLiteProfileStore, in
 from ..adapters.hackernews import HackerNewsSource
 from ..adapters.seed_source import SeedSource
 from ..adapters.upwork_rss import UpworkRssSource
+from ..adapters.smtp_mailer import SmtpMailer
 from ..domain.events import EventBus
 from ..components.discovery import Discovery
 from ..domain.services.decision import ApproveOpportunity, PassOpportunity
 from ..domain.services.preview_proposal import PreviewProposal
-from ..infra.config import JOB_SOURCE
+from ..domain.services.submit_application import SubmitApplication
+from ..infra.config import JOB_SOURCE, APPLY_TO
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -48,6 +50,7 @@ discovery = Discovery(_source, repo, profiles, bus)
 approve_opp = ApproveOpportunity(repo, profiles, bus)
 pass_opp = PassOpportunity(repo, bus)
 preview_proposal = PreviewProposal(repo, profiles)
+submit_app = SubmitApplication(repo, profiles, SmtpMailer(), bus, apply_to=APPLY_TO)
 
 # Escalation + persistence sink: every event is stored (timeline projection);
 # "action needed" events are also flagged for notification (email/notify later).
@@ -158,6 +161,15 @@ def preview(opp_id: int):
     except ValueError:
         return JSONResponse({"error": "not found"}, status_code=404)
     return {"proposal": text}
+
+
+@app.post("/api/opportunities/{opp_id}/apply")
+def apply(opp_id: int):
+    try:
+        result = submit_app(opp_id)
+    except ValueError:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return result
 
 
 @app.get("/api/opportunities/{opp_id}/timeline")
