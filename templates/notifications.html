@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Notifications · JobHunter{% endblock %}
+{% block content %}
+<h1>Notifications</h1>
+{% for n in notes %}
+<div class="card" style="{% if not n.read %}border-left:4px solid var(--accent);{% endif %}">
+  <div><b>[{{ n.kind }}]</b> {{ n.message }}</div>
+  <div class="muted">{{ n.created_at }}</div>
+  {% if not n.read %}
+  <form method="post" action="/notifications/read/{{ n.id }}" style="margin-top:.4rem;">
+    <button type="submit">Mark read</button>
+  </form>
+  {% endif %}
+</div>
+{% else %}<p class="muted">No notifications.</p>{% endfor %}
+{% endblock %}

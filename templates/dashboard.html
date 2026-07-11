@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · JobHunter{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="stats">
+  <div class="stat"><b>{{ stats.jobs }}</b>Jobs found</div>
+  <div class="stat"><b>{{ stats.applied }}</b>Applications</div>
+  <div class="stat"><b>{{ stats.interviews }}</b>Interviews</div>
+  <div class="stat"><b>{{ stats.notifications }}</b>Unread alerts</div>
+</div>
+
+<div class="card">
+  <h2>Recent applications</h2>
+  {% if recent %}
+  <table>
+    <tr><th>Job</th><th>Company</th><th>Status</th><th>Applied</th></tr>
+    {% for r in recent %}
+    <tr><td>{{ r.title }}</td><td>{{ r.company }}</td><td><span class="pill">{{ r.status }}</span></td><td class="muted">{{ r.applied_at[:10] }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No applications yet. Search jobs to get started.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Latest notifications</h2>
+  {% if unread %}
+  <ul>{% for n in unread %}<li><b>[{{ n.kind }}]</b> {{ n.message }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Nothing new.</p>{% endif %}
+  <a class="btn" href="/notifications">View all</a>
+</div>
+{% endblock %}

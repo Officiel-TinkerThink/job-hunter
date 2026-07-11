@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}JobHunter{% endblock %}</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --accent:#38bdf8; --text:#e2e8f0; --muted:#94a3b8; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    header { background:var(--card); padding:1rem 2rem; display:flex; gap:1.5rem; align-items:center; }
+    header a { color:var(--accent); text-decoration:none; font-weight:600; }
+    main { padding:2rem; max-width:1000px; margin:0 auto; }
+    .card { background:var(--card); padding:1.25rem; border-radius:10px; margin-bottom:1rem; }
+    .stats { display:flex; gap:1rem; flex-wrap:wrap; }
+    .stat { background:var(--card); padding:1.25rem; border-radius:10px; flex:1; min-width:140px; text-align:center; }
+    .stat b { display:block; font-size:1.8rem; color:var(--accent); }
+    table { width:100%; border-collapse:collapse; margin-top:.5rem; }
+    th, td { text-align:left; padding:.6rem; border-bottom:1px solid #334155; }
+    input, textarea, select { width:100%; padding:.5rem; margin:.3rem 0; border-radius:6px; border:1px solid #334155; background:#0b1220; color:var(--text); }
+    button, .btn { background:var(--accent); color:#06283d; border:none; padding:.55rem 1rem; border-radius:6px; cursor:pointer; font-weight:700; text-decoration:none; display:inline-block; }
+    .muted { color:var(--muted); }
+    .pill { display:inline-block; padding:.2rem .6rem; border-radius:999px; font-size:.75rem; background:#0ea5e9; color:#04293a; }
+    .flash { background:#064e3b; color:#a7f3d0; padding:.6rem 1rem; border-radius:6px; margin-bottom:1rem; }
+    a.rowlink { color:var(--accent); text-decoration:none; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>JobHunter</strong>
+    <a href="/">Dashboard</a>
+    <a href="/jobs">Jobs</a>
+    <a href="/applications">Applications</a>
+    <a href="/notifications">Notifications</a>
+    <a href="/profile">Profile</a>
+  </header>
+  <main>
+    {% if request.query_params.get("flash") %}
+      <div class="flash">{{ request.query_params.get("flash") }}</div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

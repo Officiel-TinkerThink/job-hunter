@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Profile · JobHunter{% endblock %}
+{% block content %}
+<h1>Your profile</h1>
+<p class="muted">This drives the auto-generated cover letters.</p>
+<form method="post" action="/profile">
+  <label>Full name</label><input name="full_name" value="{{ profile.full_name or '' }}">
+  <label>Email</label><input name="email" value="{{ profile.email or '' }}">
+  <label>Phone</label><input name="phone" value="{{ profile.phone or '' }}">
+  <label>Headline</label><input name="headline" value="{{ profile.headline or '' }}">
+  <label>Experience (years)</label><input type="number" name="experience_years" value="{{ profile.experience_years or 0 }}">
+  <label>Skills (comma separated)</label><input name="skills" value="{{ profile.skills or '' }}">
+  <label>Portfolio URL</label><input name="portfolio_url" value="{{ profile.portfolio_url or '' }}">
+  <label>Resume path</label><input name="resume_path" value="{{ profile.resume_path or '' }}">
+  <label>Summary</label><textarea name="summary" rows="4">{{ profile.summary or '' }}</textarea>
+  <button type="submit">Save profile</button>
+</form>
+{% endblock %}

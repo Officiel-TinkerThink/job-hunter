@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Apply · JobHunter{% endblock %}
+{% block content %}
+<h1>Apply: {{ job.title }}</h1>
+<div class="card">
+  <div class="muted">{{ job.company }} · {{ job.location }} · {{ job.salary }}</div>
+  <p>{{ job.description[:600] }}…</p>
+  {% if job.url %}<a class="btn" href="{{ job.url }}" target="_blank" rel="noopener">Finish submit on employer site</a>{% endif %}
+</div>
+
+<form method="post" action="/apply/{{ job.id }}">
+  <label>Cover letter (auto-generated — edit before sending)</label>
+  <textarea name="cover_letter" rows="16">{{ letter }}</textarea>
+  <button type="submit">Record application</button>
+  {% if existing %}<span class="muted"> (previously applied — this updates the record)</span>{% endif %}
+</form>
+{% endblock %}

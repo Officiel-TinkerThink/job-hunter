@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Jobs · JobHunter{% endblock %}
+{% block content %}
+<h1>Job board</h1>
+<form method="post" action="/search" style="display:flex; gap:.5rem; flex-wrap:wrap;">
+  <input name="query" placeholder="e.g. python developer" style="flex:2;">
+  <input name="location" placeholder="location (optional)" style="flex:1;">
+  <button type="submit">Search & save</button>
+</form>
+<p class="muted">Live sources: Remotive (remote). Add Adzuna keys to enable more.</p>
+
+<form method="get" action="/jobs">
+  <input name="q" value="{{ q }}" placeholder="filter current list" onkeyup="this.form.submit()">
+</form>
+
+{% for j in jobs %}
+<div class="card">
+  <h3 style="margin:.2rem 0;">{{ j.title }}</h3>
+  <div class="muted">{{ j.company }} · {{ j.location }} · {{ j.salary }}</div>
+  <div class="muted">{{ j.tags }}</div>
+  <div style="margin-top:.6rem;">
+    <a class="btn" href="/apply/{{ j.id }}">Apply</a>
+    {% if j.url %}<a class="btn" href="{{ j.url }}" target="_blank" rel="noopener">Open listing</a>{% endif %}
+  </div>
+</div>
+{% else %}<p class="muted">No jobs yet. Run a search above.</p>{% endfor %}
+{% endblock %}

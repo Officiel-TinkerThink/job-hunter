@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local data & logs
+*.db
+server.log
+
+# Secrets (keep .env.example)
+.env
+
+# Editor/OS
+.vscode/
+.DS_Store

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Applications · JobHunter{% endblock %}
+{% block content %}
+<h1>Applications</h1>
+{% for a in apps %}
+<div class="card">
+  <h3 style="margin:.2rem 0;">{{ a.title }} <span class="pill">{{ a.status }}</span></h3>
+  <div class="muted">{{ a.company }} · applied {{ a.applied_at[:10] }}</div>
+  {% if a.interview_at %}<div class="muted">Interview: {{ a.interview_at }}</div>{% endif %}
+  <div style="margin-top:.5rem;">
+    {% if not a.interview_at %}
+    <form method="post" action="/mark_interview/{{ a.id }}" style="display:inline-flex; gap:.4rem;">
+      <input type="datetime-local" name="interview_at" style="width:auto;">
+      <button type="submit">Mark interview</button>
+    </form>
+    {% endif %}
+    {% if a.url %}<a class="btn" href="{{ a.url }}" target="_blank" rel="noopener">Listing</a>{% endif %}
+  </div>
+</div>
+{% else %}<p class="muted">No applications recorded yet.</p>{% endfor %}
+{% endblock %}
