@@ -3,6 +3,19 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# Load .env (project root) if present — no third-party dep. Only fills vars that
+# aren't already set in the environment, so shell exports always win.
+_ENV_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
+if _ENV_PATH.exists():
+    for line in _ENV_PATH.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k, v = k.strip(), v.strip()
+        if k and k not in os.environ:
+            os.environ[k] = v
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # app/infra -> project root
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = os.environ.get("JOBHUNTER_DB", str(DATA_DIR / "jobhunter.db"))
