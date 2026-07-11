@@ -13,11 +13,15 @@ export function OpportunityDetail({
   onChanged: () => void;
 }) {
   const [timeline, setTimeline] = useState<Timeline | null>(null);
+  const [preview, setPreview] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     api.timeline(opp.id).then(setTimeline);
-  }, [opp.id]);
+    if (!opp.proposal) api.previewProposal(opp.id).then(setPreview);
+    else setPreview(opp.proposal);
+  }, [opp.id, opp.proposal]);
 
   async function act(fn: () => Promise<void>) {
     setBusy(true);
@@ -25,6 +29,18 @@ export function OpportunityDetail({
     setBusy(false);
     onChanged();
     onBack();
+  }
+
+  async function copy() {
+    const text = opp.proposal || preview;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard may be blocked; ignore */
+    }
   }
 
   return (
@@ -68,13 +84,22 @@ export function OpportunityDetail({
           >
             ✕ Pass
           </button>
+          <button
+            onClick={copy}
+            className="bg-white/5 text-slate-200 px-4 py-2 rounded-lg"
+          >
+            {copied ? "✓ Copied" : "⧉ Copy pitch"}
+          </button>
         </div>
       </div>
 
-      {opp.proposal && (
+      {preview && (
         <div className="rounded-2xl bg-panel2 p-6 border border-white/5 mt-4">
-          <h3 className="font-semibold mb-2">Agent's draft proposal</h3>
-          <pre className="whitespace-pre-wrap text-sm text-slate-200 bg-black/30 rounded p-3">{opp.proposal}</pre>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">Agent's draft proposal</h3>
+            <span className="text-[11px] text-muted">{opp.proposal ? "saved" : "preview"}</span>
+          </div>
+          <pre className="whitespace-pre-wrap text-sm text-slate-200 bg-black/30 rounded p-3">{preview}</pre>
         </div>
       )}
 

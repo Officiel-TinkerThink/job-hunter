@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS opportunities (
     state TEXT,
     score_value REAL,
     score_meets_floor INTEGER,
+    score_reasons TEXT,
     proposal TEXT,
     created_at TEXT,
     updated_at TEXT,
@@ -68,6 +69,10 @@ def init_db():
     c = _conn()
     c.executescript(SCHEMA)
     c.execute("INSERT OR IGNORE INTO profile (id) VALUES (1)")
+    # Migration: add score_reasons column if an older DB lacks it.
+    cols = {row["name"] for row in c.execute("PRAGMA table_info(opportunities)")}
+    if "score_reasons" not in cols:
+        c.execute("ALTER TABLE opportunities ADD COLUMN score_reasons TEXT")
     c.commit()
     c.close()
 
@@ -86,8 +91,10 @@ def _row_to_opp(r: sqlite3.Row) -> Opportunity:
         created_at=r["created_at"], updated_at=r["updated_at"],
     )
     if r["score_value"] is not None:
+        reasons = json.loads(r["score_reasons"] or "[]")
         opp.score = MatchScore(value=r["score_value"],
-                               meets_floor=bool(r["score_meets_floor"]))
+                               meets_floor=bool(r["score_meets_floor"]),
+                               reasons=reasons)
     return opp
 
 
@@ -101,6 +108,7 @@ class SQLiteOpportunityRepo(OpportunityRepository):
             amt, cur = None, None
         score_val = opp.score.value if opp.score else None
         meets = 1 if (opp.score and opp.score.meets_floor) else 0
+        reasons_json = json.dumps(opp.score.reasons) if (opp.score and opp.score.reasons) else "[]"
         if opp.id is None:
             cur_r = c.execute(
                 "SELECT id FROM opportunities WHERE source=? AND external_id=?",
@@ -112,21 +120,21 @@ class SQLiteOpportunityRepo(OpportunityRepository):
             r = c.execute(
                 """INSERT INTO opportunities
                    (source,external_id,title,url,client,summary,budget_amount,budget_currency,
-                    tags,state,score_value,score_meets_floor,proposal,created_at,updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    tags,state,score_value,score_meets_floor,score_reasons,proposal,created_at,updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (opp.source.value, opp.external_id, opp.title, opp.url, opp.client,
                  opp.summary, amt, cur, json.dumps(opp.tags), opp.state.value,
-                 score_val, meets, opp.proposal, opp.created_at, now))
+                 score_val, meets, reasons_json, opp.proposal, opp.created_at, now))
             opp.id = r.lastrowid
         else:
             c.execute(
                 """UPDATE opportunities SET title=?,url=?,client=?,summary=?,
                    budget_amount=?,budget_currency=?,tags=?,state=?,score_value=?,
-                   score_meets_floor=?,proposal=?,updated_at=?
+                   score_meets_floor=?,score_reasons=?,proposal=?,updated_at=?
                    WHERE id=?""",
                 (opp.title, opp.url, opp.client, opp.summary, amt, cur,
                  json.dumps(opp.tags), opp.state.value, score_val, meets,
-                 opp.proposal, now, opp.id))
+                 reasons_json, opp.proposal, now, opp.id))
         c.commit()
         c.close()
         return opp

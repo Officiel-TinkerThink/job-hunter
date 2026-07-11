@@ -17,6 +17,7 @@ from ..adapters.upwork_rss import UpworkRssSource
 from ..domain.events import EventBus
 from ..components.discovery import Discovery
 from ..domain.services.decision import ApproveOpportunity, PassOpportunity
+from ..domain.services.preview_proposal import PreviewProposal
 from ..infra.config import JOB_SOURCE
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,6 +47,7 @@ _source = _source_cls()
 discovery = Discovery(_source, repo, profiles, bus)
 approve_opp = ApproveOpportunity(repo, profiles, bus)
 pass_opp = PassOpportunity(repo, bus)
+preview_proposal = PreviewProposal(repo, profiles)
 
 # Escalation + persistence sink: every event is stored (timeline projection);
 # "action needed" events are also flagged for notification (email/notify later).
@@ -81,6 +83,7 @@ def _opp_json(o):
         "budget": (f"{o.budget.amount:g} {o.budget.currency}" if o.budget else None),
         "tags": o.tags, "state": o.state.value,
         "score": o.score.value if o.score else None,
+        "score_reasons": o.score.reasons if o.score else [],
         "proposal": o.proposal,
         "created_at": o.created_at,
     }
@@ -146,6 +149,15 @@ def reject(opp_id: int):
     except ValueError:
         return JSONResponse({"error": "not found"}, status_code=404)
     return {"ok": True, "state": "archived"}
+
+
+@app.post("/api/opportunities/{opp_id}/preview-proposal")
+def preview(opp_id: int):
+    try:
+        text = preview_proposal(opp_id)
+    except ValueError:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return {"proposal": text}
 
 
 @app.get("/api/opportunities/{opp_id}/timeline")

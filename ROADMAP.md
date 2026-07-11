@@ -103,10 +103,27 @@ Upwork-first (clear "bid" action to build toward); Fiverr second (profile/SEO + 
 - **P4 — Inbox monitor + auto-reply:** IMAP classify → escalate test/interview; draft routine replies.
 - **P5 — Channels + full-time job modules** (LinkedIn scraping behind ToS-risk toggle, etc.)
 
-## Open decisions (needed to scope P0)
+## What's built (as of 2026-07-12)
+- **Backend (hex/DDD/ED):** domain core (Opportunity, MatchScore, Profile, events, ports);
+  adapters (SQLite repo w/ event store + migration, SeedSource, HackerNewsSource, UpworkRssSource stub);
+  cells (ScoreOpportunity, ApproveOpportunity, PassOpportunity, PreviewProposal);
+  Discovery component; FastAPI API (opportunities, timeline, discover, profile,
+  preview-proposal, approve, pass). Events persisted → timeline projection.
+- **Frontend (React+Vite+Tailwind+Framer Motion):** agent-first "For You" board + "All" tab,
+  opportunity detail w/ progress timeline + agent draft proposal + 1-tap approve/pass + copy,
+  Profile view/edit, working header nav (For You / All / Profile) + Agent scan.
+- **Score transparency:** every card shows match % + the *reasons* (skill match, budget floor,
+  seniority, avoid-niche hits). Rejects (below-floor / avoid-niche) shown on All tab.
+- **Discovery default = SeedSource** (realistic Upwork-style gigs) since Upwork RSS was
+  discontinued (HTTP 410). HackerNewsSource = live public feed. UpworkApiSource = stub for
+  when official API access is granted.
+- Demo Wahyu profile auto-seeded on first run; replace via Profile page or `POST /api/profile`.
+
+## Open decisions (needed to scope next phases)
 - [x] Jobs vs freelance first? → **FREELANCE FIRST**
 - [x] Architecture? → **Hexagonal + DDD + Event-Driven, lego layering**
-- [ ] Real Wahyu profile + "good for me" rules (skills, min rate/budget floor, remote-only, timezone, dealbreakers)
-- [ ] Risk appetite: fully auto vs propose-then-approve-top (recommend latter — protects Connects + JSS)
+- [x] Propose-then-approve gate (protects Connects + JSS) — built; auto-widen later
+- [ ] **Set Wahyu's REAL profile** (skills, min rate/budget floor, remote-only, timezone, dealbreakers) via the Profile page
 - [ ] Upwork + Fiverr accounts live? Which first (recommend Upwork)
 - [ ] Runtime: this laptop (manual start) vs always-on (cron/server) — autonomy needs scheduling
+- [ ] P2: SubmitApplication (email-apply via SMTP; Upwork submit behind official API)

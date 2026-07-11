@@ -4,8 +4,11 @@ import api, { type Opportunity } from "./api";
 import { Header, Hero } from "./components/Layout";
 import { OpportunityCard } from "./components/OpportunityCard";
 import { OpportunityDetail } from "./components/OpportunityDetail";
+import { ProfileView } from "./components/ProfileView";
 
-type View = "board" | "detail";
+type View = "board" | "detail" | "profile";
+
+const FORYOU_STATES = ["proposed", "promising", "draft_ready", "applied", "interview", "test"];
 
 export default function App() {
   const [opps, setOpps] = useState<Opportunity[]>([]);
@@ -24,7 +27,7 @@ export default function App() {
   }, []);
 
   const foryou = useMemo(
-    () => opps.filter((o) => ["proposed", "promising", "draft_ready", "applied", "interview", "test"].includes(o.state)),
+    () => opps.filter((o) => FORYOU_STATES.includes(o.state)),
     [opps]
   );
   const shown = filter === "foryou" ? foryou : opps;
@@ -43,7 +46,7 @@ export default function App() {
   if (view === "detail" && selected) {
     return (
       <div>
-        <Header onDiscover={doDiscover} discovering={discovering} />
+        <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={setFilter} onProfile={() => { setView("profile"); setSelected(null); }} />
         <div className="p-6">
           <OpportunityDetail
             opp={selected}
@@ -55,9 +58,20 @@ export default function App() {
     );
   }
 
+  if (view === "profile") {
+    return (
+      <div>
+        <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={setFilter} onProfile={() => setView("profile")} />
+        <main className="max-w-5xl mx-auto px-6 py-8">
+          <ProfileView onSaved={load} />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-full">
-      <Header onDiscover={doDiscover} discovering={discovering} />
+      <Header onDiscover={doDiscover} discovering={discovering} filter={filter} onFilter={setFilter} onProfile={() => setView("profile")} />
       <Hero />
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-5">

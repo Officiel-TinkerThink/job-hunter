@@ -9,6 +9,7 @@ export interface Opportunity {
   tags: string[];
   state: string;
   score: number | null;
+  score_reasons: string[];
   proposal: string;
   created_at: string;
 }
@@ -65,6 +66,11 @@ const api = {
   async timeline(id: number): Promise<Timeline> {
     const r = await fetch(`/api/opportunities/${id}/timeline`);
     return r.json();
+  },
+  async previewProposal(id: number): Promise<string> {
+    const r = await fetch(`/api/opportunities/${id}/preview-proposal`, { method: "POST" });
+    const j = await r.json();
+    return j.proposal ?? "";
   },
   async approve(id: number): Promise<void> {
     await fetch(`/api/opportunities/${id}/approve`, { method: "POST" });

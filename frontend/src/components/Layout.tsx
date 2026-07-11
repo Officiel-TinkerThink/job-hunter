@@ -1,15 +1,37 @@
-export function Header({ onDiscover, discovering }: { onDiscover: () => void; discovering: boolean }) {
+export function Header({
+  onDiscover,
+  discovering,
+  filter,
+  onFilter,
+  onProfile,
+}: {
+  onDiscover: () => void;
+  discovering: boolean;
+  filter: "foryou" | "all";
+  onFilter: (f: "foryou" | "all") => void;
+  onProfile: () => void;
+}) {
+  const tabCls = (active: boolean) =>
+    active ? "text-slate-200 cursor-pointer" : "text-muted hover:text-slate-300 cursor-pointer";
   return (
     <header className="border-b border-white/5 bg-ink/80 backdrop-blur sticky top-0 z-10">
       <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🦡</span>
-          <span className="font-bold text-lg tracking-tight">JobHunter<span className="text-accent">·AI</span></span>
+          <span className="font-bold text-lg tracking-tight">
+            JobHunter<span className="text-accent">·AI</span>
+          </span>
         </div>
-        <nav className="flex items-center gap-5 text-sm text-muted">
-          <span className="text-slate-200">For You</span>
-          <span>All</span>
-          <span>Profile</span>
+        <nav className="flex items-center gap-5 text-sm">
+          <span className={tabCls(filter === "foryou")} onClick={() => onFilter("foryou")}>
+            For You
+          </span>
+          <span className={tabCls(filter === "all")} onClick={() => onFilter("all")}>
+            All
+          </span>
+          <span className="text-muted hover:text-slate-300 cursor-pointer" onClick={onProfile}>
+            Profile
+          </span>
         </nav>
         <button
           onClick={onDiscover}

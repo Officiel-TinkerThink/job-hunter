@@ -52,6 +52,13 @@ export function OpportunityCard({ opp, onClick }: { opp: Opportunity; onClick: (
           <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-slate-300">{t}</span>
         ))}
       </div>
+      {opp.score_reasons && opp.score_reasons.length > 0 && (
+        <ul className="mt-3 space-y-0.5 text-[11px] text-muted list-disc list-inside">
+          {opp.score_reasons.slice(0, 3).map((r, i) => (
+            <li key={i} className="line-clamp-1">{r}</li>
+          ))}
+        </ul>
+      )}
     </button>
   );
 }
