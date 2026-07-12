@@ -1,39 +1,44 @@
-"""FastAPI composition root — thin wiring only.
+"""FastAPI routes — async, typed via pydantic v2 schemas, DI via Depends.
 
-Routes call components/cells; adapters are injected here. No business logic.
+Business logic lives in domain components/cells; adapters are injected through
+`deps`. Sync repo/SMTP calls run in a threadpool so the event loop stays free.
 """
 from __future__ import annotations
+
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from fastapi.concurrency import run_in_threadpool
 
-from ..adapters.sqlite_repo import SQLiteOpportunityRepo, SQLiteProfileStore, init_db
-from ..adapters.hackernews import HackerNewsSource
-from ..adapters.seed_source import SeedSource
-from ..adapters.upwork_rss import UpworkRssSource
-from ..adapters.smtp_mailer import SmtpMailer
-from ..domain.events import EventBus
-from ..components.discovery import Discovery
-from ..domain.services.decision import ApproveOpportunity, PassOpportunity
-from ..domain.services.preview_proposal import PreviewProposal
-from ..domain.services.submit_application import SubmitApplication
-from ..infra.config import JOB_SOURCE, APPLY_TO
+from .schemas import (
+    ApplyResult, DiscoverResult, OkResult, OpportunityOut, ProfileIn, ProfileOut,
+    TimelineOut,
+)
+from . import deps
+from ..domain.events import DomainEvent
+from ..domain.models import Money, Profile, OpportunityState
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+router = APIRouter(prefix="/api")
 
-# --- wiring (composition root) -------------------------------------------
-init_db()
-bus = EventBus()
-repo = SQLiteOpportunityRepo()
-profiles = SQLiteProfileStore()
 
-# Auto-seed a demo Wahyu profile on first run so scoring works out of the box.
-# Replace via POST /api/profile with your real "good for me" preferences.
-if not profiles.get().skills:
-    from ..domain.models import Money, Profile
+def _opp_json(o) -> OpportunityOut:
+    return OpportunityOut(
+        id=o.id, source=o.source.value, title=o.title, url=o.url, client=o.client,
+        summary=o.summary,
+        budget=(f"{o.budget.amount:g} {o.budget.currency}" if o.budget else None),
+        tags=o.tags, state=o.state.value,
+        score=o.score.value if o.score else None,
+        score_reasons=o.score.reasons if o.score else [],
+        proposal=o.proposal or "", created_at=o.created_at,
+    )
+
+
+def _seed_demo_profile(profiles) -> None:
+    """Idempotent demo profile so scoring works out of the box. Replace via UI."""
+    if profiles.get().skills:
+        return
     profiles.save(Profile(
         full_name="Wahyu Sinurat", headline="Full-stack Python / React developer",
         skills=["python", "react", "fastapi", "django", "aws", "docker", "sql"],
@@ -43,74 +48,25 @@ if not profiles.get().skills:
         avoid_niches=["crypto", "mlm"], timezone="Asia/Jakarta",
     ))
 
-_SOURCE_MAP = {"seed": SeedSource, "hackernews": HackerNewsSource, "upwork": UpworkRssSource}
-_source_cls = _SOURCE_MAP.get(JOB_SOURCE, SeedSource)
-_source = _source_cls()
-discovery = Discovery(_source, repo, profiles, bus)
-approve_opp = ApproveOpportunity(repo, profiles, bus)
-pass_opp = PassOpportunity(repo, bus)
-preview_proposal = PreviewProposal(repo, profiles)
-submit_app = SubmitApplication(repo, profiles, SmtpMailer(), bus, apply_to=APPLY_TO)
 
-# Escalation + persistence sink: every event is stored (timeline projection);
-# "action needed" events are also flagged for notification (email/notify later).
-def _on_event(e):
-    repo.add_event(e.opp_id, e)
-    if e.kind == "escalated":
-        print(f"[ESCALATE] {e.message}")
-bus.subscribe(_on_event)
-
-app = FastAPI(title="JobHunter · Freelance", version="0.2.0")
+@router.get("/profile", response_model=ProfileOut)
+async def get_profile(profiles=Depends(deps.get_profiles)) -> ProfileOut:
+    p = await run_in_threadpool(profiles.get)
+    return ProfileOut(
+        full_name=p.full_name, headline=p.headline, skills=p.skills,
+        experience_years=p.experience_years, summary=p.summary,
+        portfolio_url=p.portfolio_url,
+        min_hourly_rate=p.min_hourly_rate.amount if p.min_hourly_rate else None,
+        min_fixed_budget=p.min_fixed_budget.amount if p.min_fixed_budget else None,
+        remote_only=p.remote_only, avoid_niches=p.avoid_niches,
+        timezone=p.timezone, upwork_profile_url=p.upwork_profile_url,
+        fiverr_gig_urls=p.fiverr_gig_urls,
+    )
 
 
-class ProfileIn(BaseModel):
-    full_name: str = ""
-    headline: str = ""
-    skills: list[str] = []
-    experience_years: int = 0
-    summary: str = ""
-    portfolio_url: str = ""
-    min_hourly_rate: float | None = None
-    min_fixed_budget: float | None = None
-    remote_only: bool = True
-    avoid_niches: list[str] = []
-    timezone: str = "UTC"
-    upwork_profile_url: str = ""
-    fiverr_gig_urls: list[str] = []
-
-
-def _opp_json(o):
-    return {
-        "id": o.id, "source": o.source.value, "title": o.title, "url": o.url,
-        "client": o.client, "summary": o.summary,
-        "budget": (f"{o.budget.amount:g} {o.budget.currency}" if o.budget else None),
-        "tags": o.tags, "state": o.state.value,
-        "score": o.score.value if o.score else None,
-        "score_reasons": o.score.reasons if o.score else [],
-        "proposal": o.proposal,
-        "created_at": o.created_at,
-    }
-
-
-@app.get("/api/profile")
-def get_profile():
-    p = profiles.get()
-    return {
-        "full_name": p.full_name, "headline": p.headline, "skills": p.skills,
-        "experience_years": p.experience_years, "summary": p.summary,
-        "portfolio_url": p.portfolio_url,
-        "min_hourly_rate": p.min_hourly_rate.amount if p.min_hourly_rate else None,
-        "min_fixed_budget": p.min_fixed_budget.amount if p.min_fixed_budget else None,
-        "remote_only": p.remote_only, "avoid_niches": p.avoid_niches,
-        "timezone": p.timezone, "upwork_profile_url": p.upwork_profile_url,
-        "fiverr_gig_urls": p.fiverr_gig_urls,
-    }
-
-
-@app.post("/api/profile")
-def set_profile(p: ProfileIn):
-    from ..domain.models import Money, Profile
-    profiles.save(Profile(
+@router.post("/profile", response_model=OkResult)
+async def set_profile(p: ProfileIn, profiles=Depends(deps.get_profiles)) -> OkResult:
+    await run_in_threadpool(profiles.save, Profile(
         full_name=p.full_name, headline=p.headline, skills=p.skills,
         experience_years=p.experience_years, summary=p.summary,
         portfolio_url=p.portfolio_url,
@@ -120,72 +76,88 @@ def set_profile(p: ProfileIn):
         timezone=p.timezone, upwork_profile_url=p.upwork_profile_url,
         fiverr_gig_urls=p.fiverr_gig_urls,
     ))
-    return {"ok": True}
+    return OkResult()
 
 
-@app.post("/api/discover")
-def discover():
-    summary = discovery.run()
-    return summary
+@router.post("/discover", response_model=DiscoverResult)
+async def discover(discovery=Depends(deps.get_discovery)) -> DiscoverResult:
+    s = await run_in_threadpool(discovery.run)
+    return DiscoverResult(**s)
 
 
-@app.get("/api/opportunities")
-def list_opportunities(states: str | None = None):
+@router.get("/opportunities", response_model=list[OpportunityOut])
+async def list_opportunities(
+    states: str | None = None, repo=Depends(deps.get_repo)
+) -> list[OpportunityOut]:
     state_list = states.split(",") if states else None
-    opps = repo.list_states(state_list)
+    opps = await run_in_threadpool(repo.list_states, state_list)
     return [_opp_json(o) for o in opps]
 
 
-@app.post("/api/opportunities/{opp_id}/approve")
-def approve(opp_id: int):
+@router.post("/opportunities/{opp_id}/approve", response_model=OkResult)
+async def approve(opp_id: int, cell=Depends(deps.get_approve)) -> OkResult:
     try:
-        approve_opp(opp_id)
+        await run_in_threadpool(cell, opp_id)
     except ValueError:
         return JSONResponse({"error": "not found"}, status_code=404)
-    return {"ok": True, "state": "draft_ready"}
+    return OkResult()
 
 
-@app.post("/api/opportunities/{opp_id}/pass")
-def reject(opp_id: int):
+@router.post("/opportunities/{opp_id}/pass", response_model=OkResult)
+async def reject(opp_id: int, cell=Depends(deps.get_pass)) -> OkResult:
     try:
-        pass_opp(opp_id)
+        await run_in_threadpool(cell, opp_id)
     except ValueError:
         return JSONResponse({"error": "not found"}, status_code=404)
-    return {"ok": True, "state": "archived"}
+    return OkResult()
 
 
-@app.post("/api/opportunities/{opp_id}/preview-proposal")
-def preview(opp_id: int):
+@router.post("/opportunities/{opp_id}/preview-proposal")
+async def preview(opp_id: int, cell=Depends(deps.get_preview)):
     try:
-        text = preview_proposal(opp_id)
+        text = await run_in_threadpool(cell, opp_id)
     except ValueError:
         return JSONResponse({"error": "not found"}, status_code=404)
     return {"proposal": text}
 
 
-@app.post("/api/opportunities/{opp_id}/apply")
-def apply(opp_id: int):
+@router.post("/opportunities/{opp_id}/apply", response_model=ApplyResult)
+async def apply(opp_id: int, cell=Depends(deps.get_submit)) -> ApplyResult:
     try:
-        result = submit_app(opp_id)
+        r = await run_in_threadpool(cell, opp_id)
     except ValueError:
         return JSONResponse({"error": "not found"}, status_code=404)
-    return result
+    return ApplyResult(**r)
 
 
-@app.get("/api/opportunities/{opp_id}/timeline")
-def timeline(opp_id: int):
-    opp = repo.get(opp_id)
+@router.get("/opportunities/{opp_id}/timeline", response_model=TimelineOut)
+async def timeline(opp_id: int, repo=Depends(deps.get_repo)):
+    opp = await run_in_threadpool(repo.get, opp_id)
     if not opp:
         return JSONResponse({"error": "not found"}, status_code=404)
-    evs = repo.events_for(opp_id)
-    return {
-        "opportunity": _opp_json(opp),
-        "events": [{"kind": e.kind, "message": e.message, "at": e.at,
-                    "payload": e.payload} for e in evs],
-    }
+    evs = await run_in_threadpool(repo.events_for, opp_id)
+    return TimelineOut(
+        opportunity=_opp_json(opp),
+        events=[TimelineEvent(kind=e.kind, message=e.message, at=e.at, payload=e.payload)
+                for e in evs],
+    )
 
 
-# Serve the built React app (produced by the frontend build step)
-DIST = BASE_DIR.parent / "frontend" / "dist"
-if DIST.exists():
-    app.mount("/", StaticFiles(directory=str(DIST), html=True), name="spa")
+def register_event_sink(app) -> None:
+    """Persist every domain event as the timeline projection (sink subscriber)."""
+    bus = deps.get_bus()
+    repo = deps.get_repo()
+
+    def _on_event(e: DomainEvent) -> None:
+        repo.add_event(e.opp_id, e)
+        if e.kind == "escalated":
+            print(f"[ESCALATE] {e.message}")
+
+    bus.subscribe(_on_event)
+
+
+def mount_spa(app) -> None:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    DIST = BASE_DIR.parent / "frontend" / "dist"
+    if DIST.exists():
+        app.mount("/", StaticFiles(directory=str(DIST), html=True), name="spa")

@@ -17,6 +17,7 @@ export function ProfileView({ onSaved }: { onSaved: () => void }) {
   const [p, setP] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
     api.getProfile().then(setP);
@@ -27,19 +28,28 @@ export function ProfileView({ onSaved }: { onSaved: () => void }) {
   function set<K extends keyof Profile>(k: K, v: Profile[K]) {
     setP({ ...p!, [k]: v });
     setSaved(false);
+    setSaveError(false);
   }
-  const list = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+  const list = (v: string | string[]) =>
+    (Array.isArray(v) ? v : String(v).split(",")).map((x) => x.trim()).filter(Boolean);
 
   async function save() {
     setSaving(true);
-    await api.saveProfile({
-      ...p!,
-      skills: list((p!.skills as unknown as string) as string),
-      avoid_niches: list((p!.avoid_niches as unknown as string) as string),
-    });
-    setSaving(false);
-    setSaved(true);
-    onSaved();
+    try {
+      await api.saveProfile({
+        ...p!,
+        skills: list(p!.skills),
+        avoid_niches: list(p!.avoid_niches),
+      });
+      setSaved(true);
+      onSaved();
+    } catch (err) {
+      console.error("profile save failed", err);
+      setSaved(false);
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const skillsStr = Array.isArray(p.skills) ? p.skills.join(", ") : "";
@@ -112,6 +122,7 @@ export function ProfileView({ onSaved }: { onSaved: () => void }) {
           {saving ? "Saving…" : "Save profile"}
         </button>
         {saved && <span className="text-sm text-good">✓ Saved</span>}
+        {saveError && <span className="text-sm text-red-400">✕ Save failed — check connection</span>}
       </div>
     </div>
   );
